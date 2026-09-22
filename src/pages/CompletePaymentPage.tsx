@@ -46,8 +46,8 @@ export function CompletePaymentPage() {
   const logisticsCost = 185000;
   const platformFee = 57600;
   const totalDue = goodsSubtotal + logisticsCost + platformFee; // 6,002,600 NGN
-  // 1 USDC ≈ 1,620 NGN (Stellar testnet reference rate)
-  const NGN_PER_USDC = 1620;
+  // 1 USDC ≈ 1,330 NGN (current market rate)
+  const NGN_PER_USDC = 1330;
   const totalDueUSDC = parseFloat((totalDue / NGN_PER_USDC).toFixed(2));
 
   const handlePay = async () => {
