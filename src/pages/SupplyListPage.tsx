@@ -77,10 +77,28 @@ export function SupplyListPage() {
           {filtered.map((listing) => (
             <Card key={listing.id} hover onClick={() => navigate(`/app/supply/${listing.id}`)}>
               <div className="p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="text-4xl">{COMMODITY_ICONS[listing.commodity] ?? '🌾'}</div>
-                  <VerifiedBadge verified={listing.supplierVerified} />
-                </div>
+                {listing.photos && listing.photos.length > 0 ? (
+                  <div className="relative mb-3 -mx-5 -mt-5">
+                    <img
+                      src={listing.photos[0]}
+                      alt={formatCommodity(listing.commodity)}
+                      className="w-full h-32 object-cover rounded-t-xl"
+                    />
+                    <div className="absolute top-2 right-2">
+                      <VerifiedBadge verified={listing.supplierVerified} />
+                    </div>
+                    {listing.photos.length > 1 && (
+                      <span className="absolute bottom-2 right-2 text-[10px] bg-gray-900/60 text-white px-1.5 py-0.5 rounded-full font-medium">
+                        +{listing.photos.length - 1} more
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="text-4xl">{COMMODITY_ICONS[listing.commodity] ?? '🌾'}</div>
+                    <VerifiedBadge verified={listing.supplierVerified} />
+                  </div>
+                )}
                 <h3 className="text-base font-semibold text-gray-900 mb-0.5">{formatCommodity(listing.commodity)}</h3>
                 <div className="text-xs text-gray-500 mb-3">Grade {listing.qualityGrade} · {listing.id}</div>
 

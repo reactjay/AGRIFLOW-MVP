@@ -57,6 +57,7 @@ export interface SupplyListing {
   availabilityDate: string;
   description: string;
   status: ListingStatus;
+  photos?: string[];
   createdAt: string;
   updatedAt: string;
 }

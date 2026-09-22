@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, CheckCircle2, XCircle, ArrowRightLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supplyService } from '../services/supplyService';
 import { demandService } from '../services/demandService';
 import { matchingService } from '../services/matchingService';
@@ -22,6 +22,7 @@ export function SupplyDetailPage() {
   const { toast } = useToast();
   const [listing, setListing] = useState<SupplyListing | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [photoIndex, setPhotoIndex] = useState(0);
   const [showTxnModal, setShowTxnModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [finding, setFinding] = useState(false);
@@ -116,9 +117,64 @@ export function SupplyDetailPage() {
           {/* Main listing */}
           <Card>
             <CardContent className="pt-6">
+              {/* Photo gallery */}
+              {listing.photos && listing.photos.length > 0 ? (
+                <div className="mb-5 -mx-6 -mt-6">
+                  <div className="relative">
+                    <img
+                      src={listing.photos[photoIndex]}
+                      alt={`${formatCommodity(listing.commodity)} photo ${photoIndex + 1}`}
+                      className="w-full h-56 object-cover rounded-t-xl"
+                    />
+                    {listing.photos.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoIndex((i) => (i - 1 + listing.photos!.length) % listing.photos!.length)}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-gray-900/50 text-white flex items-center justify-center hover:bg-gray-900/70"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoIndex((i) => (i + 1) % listing.photos!.length)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-gray-900/50 text-white flex items-center justify-center hover:bg-gray-900/70"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                          {listing.photos.map((_, i) => (
+                            <button
+                              key={i} type="button" onClick={() => setPhotoIndex(i)}
+                              className={`w-1.5 h-1.5 rounded-full transition-colors ${i === photoIndex ? 'bg-white' : 'bg-white/50'}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    <div className="absolute top-3 right-3">
+                      <VerifiedBadge verified={listing.supplierVerified} />
+                    </div>
+                  </div>
+                  {/* Thumbnail strip */}
+                  {listing.photos.length > 1 && (
+                    <div className="flex gap-2 p-3 bg-gray-50 border-t border-gray-100">
+                      {listing.photos.map((src, i) => (
+                        <button key={i} type="button" onClick={() => setPhotoIndex(i)}
+                          className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-colors ${i === photoIndex ? 'border-agri-600' : 'border-transparent hover:border-gray-300'}`}>
+                          <img src={src} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className="text-5xl">{COMMODITY_ICONS[listing.commodity] ?? '🌾'}</div>
+                  {(!listing.photos || listing.photos.length === 0) && (
+                    <div className="text-5xl">{COMMODITY_ICONS[listing.commodity] ?? '🌾'}</div>
+                  )}
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">{formatCommodity(listing.commodity)}</h2>
                     <div className="flex items-center gap-2 mt-1">
@@ -128,7 +184,7 @@ export function SupplyDetailPage() {
                     </div>
                   </div>
                 </div>
-                <VerifiedBadge verified={listing.supplierVerified} />
+                {(!listing.photos || listing.photos.length === 0) && <VerifiedBadge verified={listing.supplierVerified} />}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">

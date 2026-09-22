@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload, X, ImageIcon } from 'lucide-react';
 import { supplyService } from '../services/supplyService';
 import { storageService, STORE_KEYS } from '../services/storageService';
 import { useApp } from '../context/AppContext';
@@ -10,17 +10,24 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Input, Select, Textarea } from '../components/ui/Input';
 import type { CommodityType, QualityGrade } from '../types';
 
+const MAX_PHOTOS = 3;
+const MAX_SIZE_MB = 5;
+
 export function CreateSupplyPage() {
   const navigate = useNavigate();
   const { session } = useApp();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState({
     commodity: 'maize' as CommodityType,
     quantity: '', unit: 'tonnes',
     qualityGrade: 'A' as QualityGrade,
     pricePerUnit: '',
-    location: session?.role === 'supplier' ? '' : '',
+    location: '',
     availabilityDate: '',
     description: '',
   });
@@ -29,6 +36,22 @@ export function CreateSupplyPage() {
   const user = users.find((u) => u.id === session?.userId);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const processFiles = (files: FileList | null) => {
+    if (!files) return;
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) { toast('error', `Maximum ${MAX_PHOTOS} photos allowed.`); return; }
+    Array.from(files).slice(0, remaining).forEach((file) => {
+      if (!file.type.startsWith('image/')) { toast('error', `${file.name} is not an image.`); return; }
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) { toast('error', `${file.name} exceeds ${MAX_SIZE_MB}MB limit.`); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        setPhotos((prev) => prev.length < MAX_PHOTOS ? [...prev, dataUrl] : prev);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,11 +75,12 @@ export function CreateSupplyPage() {
         location: form.location,
         availabilityDate: new Date(form.availabilityDate).toISOString(),
         description: form.description,
+        photos: photos.length > 0 ? photos : undefined,
       });
       toast('success', `Listing ${l.id} published.`);
       navigate('/app/supply/manage');
-    } catch (e: any) {
-      toast('error', e.message);
+    } catch (e: unknown) {
+      toast('error', e instanceof Error ? e.message : 'Failed to publish listing.');
     } finally {
       setLoading(false);
     }
@@ -132,6 +156,81 @@ export function CreateSupplyPage() {
               rows={4}
               placeholder="Quality details, processing method, certifications, collection instructions..."
             />
+
+            {/* Photo Upload */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-gray-700">
+                  Commodity Photos <span className="text-gray-400 font-normal">(optional, up to {MAX_PHOTOS})</span>
+                </label>
+                {photos.length > 0 && (
+                  <span className="text-[11px] text-gray-400">{photos.length}/{MAX_PHOTOS} uploaded</span>
+                )}
+              </div>
+
+              {/* Drop zone */}
+              {photos.length < MAX_PHOTOS && (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => { e.preventDefault(); setDragOver(false); processFiles(e.dataTransfer.files); }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg px-4 py-6 flex flex-col items-center gap-2 cursor-pointer transition-colors ${
+                    dragOver ? 'border-agri-500 bg-agri-50' : 'border-gray-200 hover:border-agri-400 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                    <Upload className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-700">Drop photos here or click to browse</p>
+                    <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB each</p>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => processFiles(e.target.files)}
+                  />
+                </div>
+              )}
+
+              {/* Previews */}
+              {photos.length > 0 && (
+                <div className="flex gap-3 mt-3 flex-wrap">
+                  {photos.map((src, i) => (
+                    <div key={i} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
+                      <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-gray-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove photo"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      {i === 0 && (
+                        <span className="absolute bottom-1 left-1 text-[9px] bg-agri-700 text-white px-1 py-0.5 rounded font-semibold">
+                          COVER
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {photos.length < MAX_PHOTOS && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-agri-400 hover:text-agri-600 transition-colors shrink-0"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      <span className="text-[10px] font-medium">Add more</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" type="button" onClick={() => navigate(-1)}>Cancel</Button>
